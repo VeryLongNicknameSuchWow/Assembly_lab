@@ -7,6 +7,8 @@ data1 segment
 
        errorMessage    db "Blad danych wejsciowych!$"
 
+       space           db " $"
+
        inputBuffer     db 24                                        ; the longest possible prompt is 23 chars + carriage return
                        db 0                                         ; actual length of prompt
        inputBufferText db 24 dup('$')                               ; 24 chars (set to $ in case it is shorter)
@@ -298,28 +300,68 @@ parseDigit endp
 printNumber proc
        ; ax - number to be printed
        start:      
+                   push  ax
                    push  cx
                    push  si
-                   mov   cx, 0
+                   
+                   cmp   ax, 0
+                   jl    negative
+                   
+                   cmp   ax, 19
+                   mov   si, offset tens
+                   jg    loop10
+
                    mov   si, offset digits
+                   jmp   loop1
+
+       negative:   
+                   mov   dx, offset minus
+                   call  print
+                   mov   dx, offset space
+                   call  print
+
+                   mov   cx, -1
+                   mul   cx
+                   jmp   recur
 
        loop1:      
-                   cmp   cx, ax
+                   cmp   ax, 0
                    je    output
 
                    call  strtok
                    mov   si, bp
 
-                   inc   cx
+                   dec   ax
                    jmp   loop1
+
+       loop10:     
+                   cmp   ax, 30
+                   jl    output
+
+                   call  strtok
+                   mov   si, bp
+
+                   sub   ax, 10
+                   jmp   loop10
+
+       recur:      
+                   call  printNumber
+                   jmp   exit
 
        output:     
                    mov   dx, si
                    call  print
 
+                   sub   ax, 20
+                   cmp   ax, 0
+                   je    exit
+
+                   jmp   recur
+
        exit:       
                    pop   si
                    pop   cx
+                   pop   ax
                    ret
 printNumber endp
 
