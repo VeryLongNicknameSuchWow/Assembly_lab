@@ -110,15 +110,59 @@ main proc
                    call  parseDigit
                    mov   ax, bp
 
+                   cmp   ax, 10
+                   je    error
+
                    mov   si, offset num2str
                    mov   si, ds:[si]
                    call  parseDigit
-                   add   ax, bp
+                   mov   cx, bp
 
+                   cmp   ax, 10
+                   je    error
 
-                   call  printNumber
+                   mov   si, offset opStr
+                   mov   si, ds:[si]
+                   
+                   mov   di, offset plus
+                   call  strcmp
+                   cmp   bp, 0
+                   je    addition
+
+                   mov   di, offset times
+                   call  strcmp
+                   cmp   bp, 0
+                   je    multiply
+
+                   mov   di, offset minus
+                   call  strcmp
+                   cmp   bp, 0
+                   je    subtract
+
+                   jmp   error
+
+       addition:   
+                   add   ax, cx
+                   jmp   exit
+
+       multiply:   
+                   mul   cx
+                   jmp   exit
+
+       subtract:   
+                   sub   ax, cx
+                   jmp   exit
   
+       exit:       
+                   call  printNumber
                    mov   al, 0                            ; exit code 0
+                   mov   ah, 4ch
+                   int   21h
+
+       error:      
+                   mov   dx, offset errorMessage
+                   call  print
+                   mov   al, 1                            ; exit code 0
                    mov   ah, 4ch
                    int   21h
 main endp
