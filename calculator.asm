@@ -7,6 +7,8 @@ data1 segment
 
        errorMessage    db "Blad danych wejsciowych!$"
 
+       resultMessage   db "Wynikiem jest: $"
+
        space           db " $"
 
        inputBuffer     db 24                                        ; the longest possible prompt is 23 chars + carriage return
@@ -91,21 +93,6 @@ main proc
                 
                    mov   di, offset num2str               ; save next word to num2str
                    mov   ds:[di], bp
-                    
-                   mov   si, offset num1str               ; print each substring
-                   mov   dx, ds:[si]
-                   call  print
-                   call  endl
-
-                   mov   si, offset opStr
-                   mov   dx, ds:[si]
-                   call  print
-                   call  endl
-
-                   mov   si, offset num2str
-                   mov   dx, ds:[si]
-                   call  print
-                   call  endl
 
                    mov   si, offset num1str
                    mov   si, ds:[si]
@@ -156,6 +143,9 @@ main proc
                    jmp   exit
   
        exit:       
+                   mov   dx, offset resultMessage
+                   call print
+                   
                    call  printNumber
                    mov   al, 0                            ; exit code 0
                    mov   ah, 4ch
