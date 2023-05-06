@@ -352,10 +352,13 @@ printNumber proc
                    mov   dx, si
                    call  print
 
-                   sub   ax, 20
                    cmp   ax, 0
                    je    exit
 
+                   cmp   ax, 20
+                   je    exit
+
+                   sub   ax, 20
                    jmp   recur
 
        exit:       
