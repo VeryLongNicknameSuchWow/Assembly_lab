@@ -198,16 +198,20 @@ input proc
        ; runs the buffered input interrupt
        ; dx - buffer offset (first two bytes used for length)
        start:      
+                   push  ax
                    mov   ah, 0ah
                    int   21h
+                   pop   ax
                    ret
 input endp
 
 endl proc
        ; sets up ds with endlMessage for print
        start:      
+                   push  dx
                    mov   dx, offset endlMessage
                    call  print
+                   pop   dx
                    ret
 endl endp
 
@@ -215,8 +219,10 @@ print proc
        ; runs the print interrupt
        ; dx - text offset
        start:      
+                   push  ax
                    mov   ah, 09h
                    int   21h
+                   pop   ax
                    ret
 print endp
 
