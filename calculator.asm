@@ -16,9 +16,9 @@ data1 segment
        inputBufferText db 24 dup('$')                               ; 24 chars (set to $ in case it is shorter)
                        db '$'                                       ; final end of string
 
-       num1str         dw ?
-       opStr           dw ?
-       num2str         dw ?
+       n1Ptr           dw ?                                         ; pointers to the start of each number and operator in inputBufferText
+       opPtr           dw ?
+       n2Ptr           dw ?
 
        digits          db "zero$"
                        db "jeden$"
@@ -67,6 +67,7 @@ main proc
 
                    mov   dx, offset queryMessage          ; print queryMessage
                    call  print
+                   
                    mov   dx, offset inputBuffer           ; input text into buffer
                    call  input
                    call  endl
@@ -78,89 +79,90 @@ main proc
                    add   bp, bx
                    mov   byte ptr ds:[bp], '$'
 
-                   mov   si, offset inputBufferText       ; save buffer start to num1str
-                   mov   di, offset num1str
+                   mov   si, offset inputBufferText       ; save first word to n1Ptr
+                   mov   di, offset n1Ptr
                    mov   ds:[di], si
 
                    mov   si, offset inputBufferText       ; strtok
                    call  strtok
 
-                   mov   di, offset opStr                 ; save next word to opStr
+                   mov   di, offset opPtr                 ; save next word to opPtr
                    mov   ds:[di], bp
 
                    mov   si, bp                           ; strtok
                    call  strtok
                 
-                   mov   di, offset num2str               ; save next word to num2str
+                   mov   di, offset n2Ptr                 ; save next word to n2Ptr
                    mov   ds:[di], bp
 
-                   mov   si, offset num1str
+                   mov   si, offset n1Ptr                 ; convert n1Ptr string to number
                    mov   si, ds:[si]
                    call  parseDigit
-                   mov   ax, bp
+                   mov   ax, bp                           ; save first number in ax
 
-                   cmp   ax, 10
+                   cmp   ax, 10                           ; handle conversion error
                    je    error
 
-                   mov   si, offset num2str
+                   mov   si, offset n2Ptr                 ; convert n2Ptr string to number
                    mov   si, ds:[si]
                    call  parseDigit
-                   mov   cx, bp
+                   mov   cx, bp                           ; save second number in cx
 
-                   cmp   ax, 10
+                   cmp   ax, 10                           ; handle conversion error
                    je    error
 
-                   mov   si, offset opStr
+                   mov   si, offset opPtr                 ; convert opPtr string to operation
                    mov   si, ds:[si]
                    
-                   mov   di, offset plus
+                   mov   di, offset plus                  ; addition
                    call  strcmp
                    cmp   bp, 0
-                   je    addition
+                   je    addOp
 
-                   mov   di, offset times
+                   mov   di, offset times                 ; multiplication
                    call  strcmp
                    cmp   bp, 0
-                   je    multiply
+                   je    mulOp
 
-                   mov   di, offset minus
+                   mov   di, offset minus                 ; subtraction
                    call  strcmp
                    cmp   bp, 0
-                   je    subtract
+                   je    subOp
 
-                   jmp   error
+                   jmp   error                            ; handle invalid operator error
 
-       addition:   
-                   add   ax, cx
+       addOp:      
+                   add   ax, cx                           ; ax = ax + cx
                    jmp   exit
 
-       multiply:   
-                   mul   cx
+       mulOp:      
+                   mul   cx                               ; ax = ax * cx
                    jmp   exit
 
-       subtract:   
-                   sub   ax, cx
+       subOp:      
+                   sub   ax, cx                           ; ax = ax - cx
                    jmp   exit
   
        exit:       
-                   mov   dx, offset resultMessage
-                   call print
-                   
+                   mov   dx, offset resultMessage         ; print result
+                   call  print
                    call  printNumber
+
                    mov   al, 0                            ; exit code 0
                    mov   ah, 4ch
                    int   21h
 
        error:      
-                   mov   dx, offset errorMessage
+                   mov   dx, offset errorMessage          ; print error
                    call  print
-                   mov   al, 1                            ; exit code 0
+
+                   mov   al, 1                            ; exit code 1
                    mov   ah, 4ch
                    int   21h
 main endp
 
 strtok proc
-       ; replaces the first encountered space with the end char ($), returns the pointer to character directly after it
+       ; replaces the first encountered space with the end char ($), returns the pointer to char directly after it
        ; si - text address
        ; bp - returns the pointer to next token
        start:      
@@ -168,18 +170,20 @@ strtok proc
                    push  si
 
        loop1:      
-                   lodsb
+                   lodsb                                  ; load byte at SI into AL and increment SI
                    cmp   al, '$'
-                   jz    exit
+                   je    exit
                    cmp   al, ' '
-                   jne   loop1
+                   je    replace
+                   jmp   loop1
 
+       replace:    
                    dec   si
                    mov   byte ptr ds:[si], '$'
                    inc   si
 
        exit:       
-                   mov   bp, si
+                   mov   bp, si                           ; return the result
                   
                    pop   si
                    pop   ax
@@ -229,14 +233,13 @@ strcmp proc
                    push  di
 
        loops:      
-                   mov   al, ds:[si]
+                   lodsb
                    cmp   al, ds:[di]
                    jne   notEqual
 
                    cmp   al, '$'
                    je    equal
 
-                   inc   si
                    inc   di
                    jmp   loops
 
@@ -246,7 +249,6 @@ strcmp proc
 
        notEqual:   
                    mov   bp, 1
-                   jmp   exit
 
        exit:       
                    pop   di
@@ -256,31 +258,33 @@ strcmp proc
 strcmp endp
 
 parseDigit proc
-       ; si - digit string to convert
-       ; bp - returns the digit as number
+       ; si - digit string to convert (this is not di for consistency, explained below)
+       ; bp - returns the digit as number (or 10 in case of conversion error)
        start:      
                    push  di
                    push  si
                    push  cx
-                   mov   cx, 0
-                   mov   di, si
-                   mov   si, offset digits
+
+                   mov   cx, 0                            ; offset digits starts from "zero"
+                   mov   di, si                           ; strcmp compares both si and di, but i need to check all digits
+                   mov   si, offset digits                ; strtok tokenizes the string from si, hence the swap
               
-       loops:      
+       loop1:      
                    call  strcmp
                    cmp   bp, 0
                    je    exit
 
-                   call  strtok
+                   call  strtok                           ; move si to the next string from offset digits
                    mov   si, bp
 
-                   inc   cx
+                   inc   cx                               ; check next number
               
                    cmp   cx, 10
-                   jne   loops
+                   jl    loop1                            ; any number < 10 is a valid digit, otherwise exit
 
        exit:       
-                   mov   bp, cx
+                   mov   bp, cx                           ; return the result
+
                    pop   cx
                    pop   si
                    pop   di
@@ -288,7 +292,8 @@ parseDigit proc
 parseDigit endp
 
 printNumber proc
-       ; ax - number to be printed
+       ; displays the number from ax using subtraction and recusion
+       ; ax - number to be printed (both positive and negative) if abs(ax) < 100
        start:      
                    push  ax
                    push  cx
@@ -297,59 +302,59 @@ printNumber proc
                    cmp   ax, 0
                    jl    negative
                    
-                   cmp   ax, 19
+                   cmp   ax, 19                           ; for num >= 20 print the tens part first (liczba dziesiątek)
                    mov   si, offset tens
                    jg    loop10
 
-                   mov   si, offset digits
+                   mov   si, offset digits                ; for num < 20 print the entire number
                    jmp   loop1
 
        negative:   
-                   mov   dx, offset minus
+                   mov   dx, offset minus                 ; print "minus "
                    call  print
                    mov   dx, offset space
                    call  print
 
-                   mov   cx, -1
+                   mov   cx, -1                           ; multiply by -1, call function recursively
                    mul   cx
                    jmp   recur
 
        loop1:      
-                   cmp   ax, 0
+                   cmp   ax, 0                            ; if ax == 0 then print the number string (break condition)
                    je    output
 
-                   call  strtok
+                   call  strtok                           ; if it's not then use the next number string
                    mov   si, bp
 
-                   dec   ax
+                   dec   ax                               ; and decrement ax
                    jmp   loop1
 
        loop10:     
-                   cmp   ax, 30
-                   jl    output
+                   cmp   ax, 30                           ; if ax < 30 then print the tens part
+                   jl    output                           ; this is because the tens part only needs to be printed for numbers > 20, offset tens begins with "dwadziescia"
 
-                   call  strtok
+                   call  strtok                           ; if it's not then use the next number string
                    mov   si, bp
 
-                   sub   ax, 10
+                   sub   ax, 10                           ; ax = ax - 10
                    jmp   loop10
+
+       output:     
+                   mov   dx, si                           ; print whichever string loop1 or loop10 put in si
+                   call  print
+                   mov   dx, offset space
+                   call  print
+
+                   cmp   ax, 0                            ; ax == 0, loop1 already finished, nothing to do - return
+                   je    exit
+
+                   cmp   ax, 20                           ; ax == 20, loop10 already finished, no need to print the units part - return
+                   je    exit
+
+                   sub   ax, 20                           ; loop10 finished, but there is a digit in units part that need to be printed - recursive call
 
        recur:      
                    call  printNumber
-                   jmp   exit
-
-       output:     
-                   mov   dx, si
-                   call  print
-
-                   cmp   ax, 0
-                   je    exit
-
-                   cmp   ax, 20
-                   je    exit
-
-                   sub   ax, 20
-                   jmp   recur
 
        exit:       
                    pop   si
