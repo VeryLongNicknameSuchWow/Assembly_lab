@@ -108,7 +108,7 @@ main proc
                    call  parseDigit
                    mov   cx, bp                           ; save second number in cx
 
-                   cmp   ax, 10                           ; handle conversion error
+                   cmp   cx, 10                           ; handle conversion error
                    je    error
 
                    mov   si, offset opPtr                 ; convert opPtr string to operation
