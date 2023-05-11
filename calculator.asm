@@ -365,7 +365,7 @@ printNumber endp
 
 code1 ends
 
-stack1 segment
+stack1 segment stack
        ; 256 bytes of stack and top of stack pointer
        s1     db 256 dup(?)
        s1top  db ?
