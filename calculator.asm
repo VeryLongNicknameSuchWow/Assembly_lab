@@ -81,22 +81,22 @@ main proc
 
                    mov   si, offset inputBufferText       ; save first word to n1Ptr
                    mov   di, offset n1Ptr
-                   mov   ds:[di], si
+                   mov   word ptr ds:[di], si
 
                    mov   si, offset inputBufferText       ; strtok
                    call  strtok
 
                    mov   di, offset opPtr                 ; save next word to opPtr
-                   mov   ds:[di], bp
+                   mov   word ptr ds:[di], bp
 
                    mov   si, bp                           ; strtok
                    call  strtok
                 
                    mov   di, offset n2Ptr                 ; save next word to n2Ptr
-                   mov   ds:[di], bp
+                   mov   word ptr ds:[di], bp
 
                    mov   si, offset n1Ptr                 ; convert n1Ptr string to number
-                   mov   si, ds:[si]
+                   mov   si, word ptr ds:[si]
                    call  parseDigit
                    mov   ax, bp                           ; save first number in ax
 
@@ -104,7 +104,7 @@ main proc
                    je    error
 
                    mov   si, offset n2Ptr                 ; convert n2Ptr string to number
-                   mov   si, ds:[si]
+                   mov   si, word ptr ds:[si]
                    call  parseDigit
                    mov   cx, bp                           ; save second number in cx
 
@@ -112,7 +112,7 @@ main proc
                    je    error
 
                    mov   si, offset opPtr                 ; convert opPtr string to operation
-                   mov   si, ds:[si]
+                   mov   si, word ptr ds:[si]
                    
                    mov   di, offset plus                  ; addition
                    call  strcmp
@@ -234,7 +234,7 @@ strcmp proc
 
        loops:      
                    lodsb
-                   cmp   al, ds:[di]
+                   cmp   al, byte ptr ds:[di]
                    jne   notEqual
 
                    cmp   al, '$'
